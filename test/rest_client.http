@@ -1,0 +1,19 @@
+@BASE_URL=localhost:5432
+
+### DELETE all users from user db
+http://localhost:8080/admin/reset
+
+### ADD user to user db
+POST http://localhost:8080/api/users 
+content-type: application/json
+
+{
+  "email": "saul@bettercall.com"
+}
+
+
+### GET All the chirps
+GET http://localhost:8080/api/chirps
+
+### GET Single chirp - ID is taken from GET All, and is not persistent, as db will change multiple times dring development
+GET http://localhost:8080/api/chirps/21b24bc1-ca22-404a-ae09-1b74b3d8946f
