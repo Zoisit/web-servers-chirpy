@@ -3,6 +3,7 @@ package main
 import (
 	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
 	"os"
 	"sync/atomic"
@@ -17,11 +18,24 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	db             *database.Queries
 	platform       string
+	secret         string
 }
 
 func main() {
 	godotenv.Load()
 	dbURL := os.Getenv("DB_URL")
+	if dbURL == "" {
+		log.Fatal("DB_URL must be set")
+	}
+	platform := os.Getenv("PLATFORM")
+	if platform == "" {
+		log.Fatal("PLATFORM must be set")
+	}
+	jwtSecret := os.Getenv("JWT_SECRET")
+	if jwtSecret == "" {
+		log.Fatal("JWT_SECRET environment variable is not set")
+	}
+
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
 		println(err)
@@ -32,7 +46,8 @@ func main() {
 	apiCfg := apiConfig{
 		fileserverHits: atomic.Int32{},
 		db:             dbQueries,
-		platform:       os.Getenv("PLATFORM"),
+		platform:       platform,
+		secret:         jwtSecret,
 	}
 
 	serveMux := http.NewServeMux()
@@ -45,6 +60,9 @@ func main() {
 	serveMux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerGetSingleChirp)
 
 	serveMux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
+	serveMux.HandleFunc("POST /api/login", apiCfg.handlerLogin)
+	serveMux.HandleFunc("POST /api/refresh", apiCfg.handlerRefresh)
+	serveMux.HandleFunc("POST /api/revoke", apiCfg.handlerRevoke)
 
 	serveMux.HandleFunc("GET /api/healthz", handlerReadyCheck)
 	serveMux.HandleFunc("GET /admin/metrics", apiCfg.handlerGetApiHits)

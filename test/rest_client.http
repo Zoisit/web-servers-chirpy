@@ -8,7 +8,8 @@ POST http://localhost:8080/api/users
 content-type: application/json
 
 {
-  "email": "saul@bettercall.com"
+    "email": "saul@bettercall.com",
+    "password": "123456"
 }
 
 
@@ -17,3 +18,32 @@ GET http://localhost:8080/api/chirps
 
 ### GET Single chirp - ID is taken from GET All, and is not persistent, as db will change multiple times dring development
 GET http://localhost:8080/api/chirps/21b24bc1-ca22-404a-ae09-1b74b3d8946f
+
+
+### Successful login
+POST http://localhost:8080/api/login
+content-type: application/json
+
+{
+  "email": "saul@bettercall.com",
+  "password": "123456"
+}
+
+### Failed login
+POST http://localhost:8080/api/login
+content-type: application/json
+
+{
+  "email": "saul@bettercall.com",
+  "password": "000011112222"
+}
+
+
+### Create Chirp with user authentication -Again, temporary value
+POST http://localhost:8080/api/chirps
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJjaGlycHkiLCJzdWIiOiI3YTI1YTlkMS1lYzc0LTRhZjMtYjUyMy03Mjg2ODEzOTc0YmUiLCJleHAiOjE3NTYwNDEzNzcsImlhdCI6MTc1NjA0MTM3N30.t6yfiB3l7ebB4zZ8cVuxgSsTao1v3Rm4tdSAOa8DkgA
+
+{
+  "body": "Clearly his taste in women is the same as his taste in lawyers: only the very best... with just a right amount of dirty!"
+}

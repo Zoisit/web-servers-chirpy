@@ -48,6 +48,23 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 	return i, err
 }
 
+const getSingleUser = `-- name: GetSingleUser :one
+SELECT id, created_at, updated_at, email, hashed_password FROM users WHERE email = $1
+`
+
+func (q *Queries) GetSingleUser(ctx context.Context, email string) (User, error) {
+	row := q.db.QueryRowContext(ctx, getSingleUser, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.HashedPassword,
+	)
+	return i, err
+}
+
 const resetUsers = `-- name: ResetUsers :exec
 DELETE FROM users
 `

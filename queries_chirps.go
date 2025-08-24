@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/Zoisit/web-servers-chirpy/internal/auth"
 	"github.com/Zoisit/web-servers-chirpy/internal/database"
 	"github.com/google/uuid"
 )
@@ -16,9 +17,25 @@ func (cfg *apiConfig) handlerCreateChirp(rw http.ResponseWriter, req *http.Reque
 	err := decoder.Decode(&params)
 	if err != nil {
 		log.Printf("Error decoding parameters: %s", err)
-		rw.WriteHeader(500)
+		rw.WriteHeader(http.StatusInternalServerError)
 		return
 	}
+
+	token, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		log.Printf("Error getting authorization from header: %s", err)
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	id, err := auth.ValidateJWT(token, cfg.secret)
+	if err != nil {
+		log.Printf("401: %s", err.Error())
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	params.UserID = id
 
 	if len(params.Body) > 140 {
 		type returnErr struct {
