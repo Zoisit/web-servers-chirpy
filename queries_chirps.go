@@ -64,15 +64,48 @@ func (cfg *apiConfig) handlerCreateChirp(rw http.ResponseWriter, req *http.Reque
 }
 
 func (cfg *apiConfig) handlerGetAllChirps(rw http.ResponseWriter, req *http.Request) {
-	chirps, err := cfg.db.GetAllChirps(req.Context())
+	//determine sorting order
+	sort_desc := false
+	s := req.URL.Query().Get("sort")
+	if s == "desc" {
+		sort_desc = true
+	}
+
+	//get author, if given
+	s = req.URL.Query().Get("author_id")
+	var chirps []database.Chirp
+	var err error
+	if s == "" {
+		chirps, err = cfg.db.GetAllChirps(req.Context())
+	} else {
+		id, err := uuid.Parse(s)
+		if err != nil {
+			http.Error(rw, "Given author id is not a valid uuid", http.StatusInternalServerError)
+			return
+		}
+		chirps, err = cfg.db.GetAllChirpsFromAuthor(req.Context(), id)
+	}
 
 	if err != nil {
 		log.Printf("Error getting all chirps: %s", err)
-		respondWithJSON(rw, http.StatusInternalServerError, err.Error())
+		respondWithJSON(rw, http.StatusNotFound, err.Error())
 		return
 	}
 
+	if sort_desc {
+		chirps = reverseCopy(chirps)
+	}
+
 	respondWithJSON(rw, http.StatusOK, chirps)
+}
+
+func reverseCopy[T any](original []T) []T {
+	reversed := make([]T, len(original))
+	copy(reversed, original)
+	for i, j := 0, len(reversed)-1; i < j; i, j = i+1, j-1 {
+		reversed[i], reversed[j] = reversed[j], reversed[i]
+	}
+	return reversed
 }
 
 func (cfg *apiConfig) handlerGetSingleChirp(rw http.ResponseWriter, req *http.Request) {
