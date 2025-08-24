@@ -100,7 +100,7 @@ func (q *Queries) RefreshTokenExists(ctx context.Context, token string) (string,
 const revokeRefreshToken = `-- name: RevokeRefreshToken :exec
 UPDATE refresh_tokens
 SET revoked_at = $2,
-    updated_at = $2
+    updated_at = NOW()
 WHERE token = $1
 `
 

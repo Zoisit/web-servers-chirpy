@@ -19,6 +19,7 @@ type apiConfig struct {
 	db             *database.Queries
 	platform       string
 	secret         string
+	polka          string
 }
 
 func main() {
@@ -35,6 +36,10 @@ func main() {
 	if jwtSecret == "" {
 		log.Fatal("JWT_SECRET environment variable is not set")
 	}
+	polkaKey := os.Getenv("POLKA_KEY")
+	if jwtSecret == "" {
+		log.Fatal("POLKA_KEY environment variable is not set")
+	}
 
 	db, err := sql.Open("postgres", dbURL)
 	if err != nil {
@@ -48,6 +53,7 @@ func main() {
 		db:             dbQueries,
 		platform:       platform,
 		secret:         jwtSecret,
+		polka:          polkaKey,
 	}
 
 	serveMux := http.NewServeMux()
@@ -58,8 +64,11 @@ func main() {
 	serveMux.HandleFunc("POST /api/chirps", apiCfg.handlerCreateChirp)
 	serveMux.HandleFunc("GET /api/chirps", apiCfg.handlerGetAllChirps)
 	serveMux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.handlerGetSingleChirp)
+	serveMux.HandleFunc("DELETE /api/chirps/{chirpID}", apiCfg.handlerDeleteSingleChirp)
 
 	serveMux.HandleFunc("POST /api/users", apiCfg.handlerCreateUser)
+	serveMux.HandleFunc("PUT /api/users", apiCfg.handlerUpdateUser)
+
 	serveMux.HandleFunc("POST /api/login", apiCfg.handlerLogin)
 	serveMux.HandleFunc("POST /api/refresh", apiCfg.handlerRefresh)
 	serveMux.HandleFunc("POST /api/revoke", apiCfg.handlerRevoke)
@@ -67,6 +76,8 @@ func main() {
 	serveMux.HandleFunc("GET /api/healthz", handlerReadyCheck)
 	serveMux.HandleFunc("GET /admin/metrics", apiCfg.handlerGetApiHits)
 	serveMux.HandleFunc("POST /admin/reset", apiCfg.handlerResetApiHits)
+
+	serveMux.HandleFunc("POST /api/polka/webhooks", apiCfg.handlerPolkaWebhooks)
 
 	server := &http.Server{
 		Addr:    ":8080",

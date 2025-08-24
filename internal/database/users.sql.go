@@ -21,7 +21,7 @@ VALUES (
     $1,
     $2
 )
-RETURNING id, created_at, updated_at, email
+RETURNING id, created_at, updated_at, email, is_chirpy_red
 `
 
 type CreateUserParams struct {
@@ -30,10 +30,11 @@ type CreateUserParams struct {
 }
 
 type CreateUserRow struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
+	ID          uuid.UUID `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Email       string    `json:"email"`
+	IsChirpyRed bool      `json:"is_chirpy_red"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
@@ -44,12 +45,13 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.Email,
+		&i.IsChirpyRed,
 	)
 	return i, err
 }
 
 const getSingleUser = `-- name: GetSingleUser :one
-SELECT id, created_at, updated_at, email, hashed_password FROM users WHERE email = $1
+SELECT id, created_at, updated_at, email, hashed_password, is_chirpy_red FROM users WHERE email = $1
 `
 
 func (q *Queries) GetSingleUser(ctx context.Context, email string) (User, error) {
@@ -61,6 +63,7 @@ func (q *Queries) GetSingleUser(ctx context.Context, email string) (User, error)
 		&i.UpdatedAt,
 		&i.Email,
 		&i.HashedPassword,
+		&i.IsChirpyRed,
 	)
 	return i, err
 }
@@ -71,5 +74,50 @@ DELETE FROM users
 
 func (q *Queries) ResetUsers(ctx context.Context) error {
 	_, err := q.db.ExecContext(ctx, resetUsers)
+	return err
+}
+
+const updateSingleUser = `-- name: UpdateSingleUser :one
+UPDATE users 
+SET updated_at = NOW(), email = $2, hashed_password = $3
+WHERE id = $1 
+RETURNING id, created_at, updated_at, email, is_chirpy_red
+`
+
+type UpdateSingleUserParams struct {
+	ID             uuid.UUID `json:"id"`
+	Email          string    `json:"email"`
+	HashedPassword string    `json:"hashed_password"`
+}
+
+type UpdateSingleUserRow struct {
+	ID          uuid.UUID `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Email       string    `json:"email"`
+	IsChirpyRed bool      `json:"is_chirpy_red"`
+}
+
+func (q *Queries) UpdateSingleUser(ctx context.Context, arg UpdateSingleUserParams) (UpdateSingleUserRow, error) {
+	row := q.db.QueryRowContext(ctx, updateSingleUser, arg.ID, arg.Email, arg.HashedPassword)
+	var i UpdateSingleUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.IsChirpyRed,
+	)
+	return i, err
+}
+
+const upgradeSingleUserToChirpyRed = `-- name: UpgradeSingleUserToChirpyRed :exec
+UPDATE users 
+SET updated_at = NOW(), is_chirpy_red = TRUE 
+WHERE id = $1
+`
+
+func (q *Queries) UpgradeSingleUserToChirpyRed(ctx context.Context, id uuid.UUID) error {
+	_, err := q.db.ExecContext(ctx, upgradeSingleUserToChirpyRed, id)
 	return err
 }

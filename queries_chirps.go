@@ -120,3 +120,48 @@ func cleanChirp(msg string) string {
 
 	return strings.Join(words, " ")
 }
+
+func (cfg *apiConfig) handlerDeleteSingleChirp(rw http.ResponseWriter, req *http.Request) {
+	chirpID, err := uuid.Parse(req.PathValue("chirpID"))
+
+	if err != nil {
+		http.Error(rw, "No chirp given", http.StatusNotFound)
+		return
+	}
+
+	//authenticate user
+	token, err := auth.GetBearerToken(req.Header)
+	if err != nil {
+		http.Error(rw, "Error getting authorization bearer from header", http.StatusUnauthorized)
+		return
+	}
+
+	id, err := auth.ValidateJWT(token, cfg.secret)
+	if err != nil {
+		rw.WriteHeader(http.StatusUnauthorized)
+		return
+	}
+
+	//check authorship
+	chirp, err := cfg.db.GetSingleChirp(req.Context(), chirpID)
+	if err != nil {
+		log.Printf("Error fetching chirp: %s", err)
+		rw.WriteHeader(http.StatusNotFound)
+		return
+	}
+
+	if id != chirp.UserID {
+		log.Printf("User id does not match: \n Expected: %s \nGiven: %s", chirp.UserID, id)
+		rw.WriteHeader(http.StatusForbidden)
+		return
+	}
+
+	//delete chirp
+	err = cfg.db.DeleteSingleChirp(req.Context(), chirpID)
+	if err != nil {
+		rw.WriteHeader(http.StatusInternalServerError)
+		return
+	}
+
+	rw.WriteHeader(http.StatusNoContent)
+}
